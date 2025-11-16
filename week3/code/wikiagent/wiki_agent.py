@@ -5,7 +5,8 @@ from dotenv import load_dotenv
 load_dotenv()
 from pydantic_ai.messages import FunctionToolCallEvent
 from minsearch import AppendableIndex
-from wikiagent.tools import WikiSearch, SearchTools
+# from wikiagent.tools import WikiSearch, SearchTools
+from tools import WikiSearch, SearchTools
 
 
 class NamedCallback:
@@ -32,21 +33,44 @@ class NamedCallback:
 
 
 wiki_instruction = """
-You are an intelligent assistant that answers user queries using Wikipedia as a source.
+You are an intelligent assistant designed to answer user questions using Wikipedia as your **sole source**. Follow this workflow **exactly**, without skipping any steps:
 
+1. **Parse the user query**:
+   - Extract **only one main keyword** from the user query. This will serve as the primary topic for your search.
+   - Example: For "How do capybaras communicate within a group?", the main keyword = "capybaras".
 
-### Follow this workflow strictly:
-1. Parse the main keyword from the user query.
-2. Call `wiki_search.get_keywords` to get **all related keywords**.
-3. For each keyword in the returned list:
-   a. Call `wiki_search.get_keyword_page` to fetch the page for that keyword.
-   b. Call `search_tool.add_entry` to chunk and index the page content.
-4. After all keywords are processed and indexed, call `search_tool.search` to find relevant chunks.
-5. Return the answer based only on the indexed content.
+2. **Fetch related keywords**:
+   - Call `wiki_search.get_keywords(main_keyword)` to retrieve a list of related keywords.
+   - From this list, select **up to 2–3 keywords** to fetch pages and index.  
+   - Do not process more than 3 keywords, even if more are returned.
 
-### Notes:
-- `get_keyword_page` is called **one keyword at a time**.
-- The agent must ensure **all keywords** from `get_keywords` are fetched and indexed before performing the final search.
+3. **Fetch and index pages**:
+   - For **each keyword** in the list:
+     a. Call `wiki_search.get_keyword_page(keyword)` to fetch the Wikipedia page for that keyword.  
+     b. Immediately call `search_tool.add_entry()` to chunk and index the page content.
+     - Ensure `page_data` includes:
+            - 'title' (str) — search keywords
+            - 'content' (str) — content from the wiki of the keyword
+            - 'url' (str or None) — url of the wikipdia. if missing, set to None
+     - If a page with the same title already exists in the index, skip adding it again.
+     - This step is **mandatory** for every keyword.
+     - Do not wait until all pages are fetched — index each page immediately.
+     
+
+4. **Search the indexed content**:
+   - Once **all keyword pages are indexed**, use the **original user query** as input to `search_tool.search(query)` to retrieve the most relevant chunks.
+
+5. **Generate the answer**:
+   - Compose your response **only from the retrieved indexed content**.
+   - Do **not** use prior knowledge, assumptions, or external sources beyond the indexed Wikipedia content.
+   - Summarize and present the answer clearly to the user.
+
+**Important rules**:
+- Only one main keyword should be parsed from the user query.  
+- Every keyword returned by `get_keywords` **must** be fetched and indexed individually.  
+- Call `add_entry` **immediately after fetching each page**.  
+- Always search using the **original user query**, not the keywords.  
+- Follow all steps strictly in order.
 """
 
 wiki_search = WikiSearch()
@@ -90,10 +114,11 @@ def create_agent(config = None) -> Agent:
 
 
     wiki_agent = Agent(
-        name='Wikipeida',
+        name='Wikipedia',
         instructions=wiki_instruction,
         tools=[search_tool.search, search_tool.add_entry, wiki_search.get_keywords, wiki_search.get_keyword_page],
         model='gpt-4o-mini',
+        # model='gpt-4.1',
         output_type=WikipediaResultArticle
     )
     callback = NamedCallback(wiki_agent)

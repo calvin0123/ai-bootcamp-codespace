@@ -93,20 +93,33 @@ class SearchTools:
         """
         Search for documents in the index related to the given query.
 
+        This method retrieves the most relevant documents based on the query
+        text, ranking results according to field importance.
+
         Args:
             query (str): The search query string.
-            num_results (int, optional): The maximum number of search results to return. Default is 5.
+            num_results (int, optional): Maximum number of search results to return. Defaults to 5.
 
         Returns:
-            List[Dict[str, Any]]: 
-                A list of search results, where each result is represented as a dictionary containing 
-                the document’s metadata and content fields (e.g., title, summary, details).
-                
+            List[Dict[str, Any]]:
+                A list of dictionaries, each representing a search result with the following keys:
+                - 'title' (str): The document title.
+                - 'content' (str): A relevant content snippet or text chunk.
+                - 'url' (str or None): The source URL, if available.
+
         Example:
-            >>> tools.search("LeBron James")
+            >>> tools.search("Capybara behavior")
             [
-                {"title": "LeBron James", "summary": "NBA player...", "details": "..."},
-                {"title": "Michael Jordan", "summary": "Former NBA player...", "details": "..."}
+                {
+                    "title": "Capybara Social Behavior",
+                    "content": "Capybaras are highly social animals that live in groups...",
+                    "url": "https://example.com/capybara-behavior"
+                },
+                {
+                    "title": "Capybara Habitat and Lifestyle",
+                    "content": "They spend much of their time near water and are excellent swimmers...",
+                    "url": "https://example.com/capybara-habitat"
+                }
             ]
         """
         boost = {"title": 2.0, "summary": 1.0, "details": 0.5}
@@ -153,15 +166,25 @@ class SearchTools:
     
     def _chunk_with_sliding_window(self, data, chunk_size=500, overlap=100):
         """
-        Split a single record into overlapping chunks.
-        
+        Split a single text record into overlapping chunks.
+
+        This method divides the 'content' field of a record into chunks of
+        specified size with overlapping text regions to preserve context.
+        The record may optionally contain a 'url' field.
+
         Args:
-            data (dict): {'title': str, 'content': str}
-            chunk_size (int): Number of characters per chunk
-            overlap (int): Overlap between chunks
-        
+            data (dict): A record containing:
+                - 'title' (str): Title of the text.
+                - 'content' (str): Main text content.
+                - 'url' (str, optional): Source URL of the text.
+            chunk_size (int): Number of characters per chunk. Defaults to 500.
+            overlap (int): Number of overlapping characters between chunks. Defaults to 100.
+
         Returns:
-            list[dict]: [{'title': ..., 'content': .... 'url': ....}, ...]
+            list[dict]: A list of chunk dictionaries with keys:
+                - 'title' (str)
+                - 'content' (str)
+                - 'url' (str or None)
         """
         title = data["title"]
         content = data["content"].strip()
@@ -189,26 +212,26 @@ class SearchTools:
         """
         Add text entries into the index after chunking them into overlapping windows.
 
-        This method takes a list of text records (each containing a 'title', 'content', 'url'),
-        splits each record into smaller chunks using a sliding window, and appends the
-        resulting chunks to the internal index.
+        This method takes a list of text records (each containing at least a 'title'
+        and 'content', and optionally a 'url'), splits each record into smaller
+        chunks using a sliding window, and appends the resulting chunks to the
+        internal index.
 
         Args:
             data (list[dict]): A list of records, each with keys:
-                - 'title' (str): The title of the text document.
-                - 'content' (str): The full text content of the document.
-                - 'url' (str): The url of the document.
+                - 'title' (str): The title of the document.
+                - 'content' (str): The full text content.
+                - 'url' (str, optional): The document’s source URL.
             chunk_size (int, optional): Number of characters per chunk. Defaults to 500.
-            overlap (int, optional): Number of overlapping characters between chunks.
-                This helps preserve context continuity. Defaults to 100.
+            overlap (int, optional): Overlapping characters between chunks for context continuity. Defaults to 100.
 
         Returns:
             list[dict]: A flattened list of all generated text chunks.
                 Each element has the structure:
                 {
                     'title': str,
-                    'content': str
-                    'url': str
+                    'content': str,
+                    'url': str or None
                 }
         """
         all_chunks = []
@@ -222,5 +245,3 @@ class SearchTools:
             all_chunks.extend(chunks)
         
         return all_chunks
-
-
