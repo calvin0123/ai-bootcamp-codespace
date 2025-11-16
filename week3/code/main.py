@@ -1,5 +1,5 @@
 import search_agent
-# import asyncio
+import asyncio
 
 agent = search_agent.create_agent()
 agent_callback = search_agent.NamedCallback(agent)
@@ -14,8 +14,8 @@ async def run_agent(user_prompt: str):
 
     return results
 
-# def run_agent_sync(user_prompt: str):
-#     return asyncio.run(run_agent(user_prompt))
+def run_agent_sync(user_prompt: str):
+    return asyncio.run(run_agent(user_prompt))
 
 
-# result = run_agent_sync("What is LLM evaluation?")
+result = run_agent_sync("What is LLM evaluation?")

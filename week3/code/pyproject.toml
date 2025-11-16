@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "evidently>=0.7.15",
+    "jaxn>=0.0.1",
     "minsearch>=0.0.7",
     "openai>=1.109.1",
     "pydantic-ai>=1.1.0",
@@ -23,4 +24,9 @@ dev = [
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
     "toyaikit>=0.0.5",
+]
+
+[tool.uv.workspace]
+members = [
+    "wikiagent",
 ]
